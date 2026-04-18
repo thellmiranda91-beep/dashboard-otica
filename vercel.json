@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "crons": [
-    { "path": "/api/cron/recover-carts", "schedule": "*/30 * * * *" }
+    { "path": "/api/cron/recover-carts", "schedule": "0 0 * * *" }
   ],
   "functions": {
     "api/**/*.js": { "maxDuration": 30 }
