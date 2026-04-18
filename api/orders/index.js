@@ -143,6 +143,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
     console.error('[API Orders] Critical Error:', err);
-    return res.status(500).json({ error: 'Erro interno no processamento do pedido', details: err.message });
+    let techDetail = err.message || JSON.stringify(err);
+    if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL === 'https://placeholder.supabase.co') {
+      techDetail = "CONFIGURAÇÃO FALTANDO: As chaves SUPABASE_URL ou SUPABASE_SERVICE_KEY não foram configuradas no painel da Vercel.";
+    }
+    return res.status(500).json({ 
+      error: 'Erro interno no processamento do pedido', 
+      details: techDetail
+    });
   }
 }

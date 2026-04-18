@@ -23,6 +23,7 @@ export function CheckoutPage({ setPage, onComplete }) {
     payMethod:'pix' 
   });
   const [error, setError] = useState(null);
+  const [errorDetails, setErrorDetails] = useState(null);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
 
   const maskCPF = (v) => v.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4').substring(0, 14);
@@ -55,6 +56,7 @@ export function CheckoutPage({ setPage, onComplete }) {
                 onComplete(order.id, total);
               } catch (e) {
                 setError(e.error || "Falha no pagamento com cartão.");
+                setErrorDetails(e.details || null);
               } finally {
                 setLoading(false);
               }
@@ -192,6 +194,7 @@ export function CheckoutPage({ setPage, onComplete }) {
     } catch (e) {
       console.error("Erro no Processamento:", e);
       setError(e.error || e.message || "Ocorreu um erro ao processar seu pagamento. Verifique seus dados e tente novamente.");
+      setErrorDetails(e.details || null);
     } finally {
       setLoading(false);
     }
@@ -315,7 +318,15 @@ export function CheckoutPage({ setPage, onComplete }) {
                     <div style={{animation:"fadeIn 0.3s"}}>
                         {error && (
                           <div style={{background: '#FEE2E2', color: '#B91C1C', padding: 12, borderRadius: 10, marginBottom: 20, fontSize: 13, fontWeight: 600, border: '1px solid #FCA5A5'}}>
-                            ⚠️ {error}
+                            <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                              <span>⚠️</span>
+                              <span>{error}</span>
+                            </div>
+                            {errorDetails && (
+                              <div style={{fontSize: 10, marginTop: 8, fontWeight: 400, opacity: 0.8, color: '#991B1B', background: 'rgba(255,255,255,0.4)', padding: 8, borderRadius: 6, fontFamily: 'monospace', wordBreak: 'break-all'}}>
+                                <strong>Detalhe técnico:</strong> {errorDetails}
+                              </div>
+                            )}
                           </div>
                         )}
                         <h3 style={{fontSize:18,fontWeight:800,marginBottom:20}}>Escolha o Pagamento</h3>
