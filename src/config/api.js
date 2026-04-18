@@ -11,7 +11,19 @@ async function call(endpoint, options = {}) {
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
-  const data = await res.json();
+
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw { 
+      status: res.status, 
+      error: `Erro de comunicação com o servidor (${res.status})`, 
+      details: text.substring(0, 200) || 'Resposta vazia'
+    };
+  }
+
   if (!res.ok) throw { status: res.status, ...data };
   return data;
 }

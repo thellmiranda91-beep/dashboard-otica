@@ -125,9 +125,10 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Payment error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('[API Payments] Critical Error:', error);
+    return res.status(500).json({ error: 'Erro interno no processamento do pagamento', details: error.message });
   }
+}
 }
 
 async function updateStock(orderId) {
