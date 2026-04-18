@@ -94,6 +94,7 @@ export default async function handler(req, res) {
       const total = subtotal + addonsTotal + shippingCost - discount;
 
       // 5. Create order
+      const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '0.0.0.0';
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -104,12 +105,12 @@ export default async function handler(req, res) {
           total,
           shipping_method: shipping?.service || 'PAC',
           coupon_code,
-          ip_address: req.headers['x-forwarded-for'] || req.connection?.remoteAddress
+          ip_address: clientIp
         })
         .select('id, order_number')
         .single();
 
-      if (orderError) return res.status(500).json({ error: orderError.message });
+      if (orderError) return res.status(500).json({ error: "Erro ao registrar pedido (DB_ORDER_FAILED)", details: orderError.message });
 
       // 6. Create order items
       const orderItems = items.map(i => ({
@@ -145,10 +146,10 @@ export default async function handler(req, res) {
     console.error('[API Orders] Critical Error:', err);
     let techDetail = err.message || JSON.stringify(err);
     if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL === 'https://placeholder.supabase.co') {
-      techDetail = "CONFIGURAÇÃO FALTANDO: As chaves SUPABASE_URL ou SUPABASE_SERVICE_KEY não foram configuradas no painel da Vercel.";
+      techDetail = "CONFIGURAÇÃO FALTANDO: As chaves SUPABASE_URL ou SUPABASE_SERVICE_KEY não foram configuradas no painel da Vercel (Production Variables).";
     }
     return res.status(500).json({ 
-      error: 'Erro interno no processamento do pedido', 
+      error: 'Erro interno no processamento do pedido (CRASH_RECOVERY)', 
       details: techDetail
     });
   }
