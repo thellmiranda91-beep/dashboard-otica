@@ -323,8 +323,9 @@ export function CheckoutPage({ setPage, onComplete }) {
                               <span>{error}</span>
                             </div>
                             {errorDetails && (
-                              <div style={{fontSize: 10, marginTop: 8, fontWeight: 400, opacity: 0.8, color: '#991B1B', background: 'rgba(255,255,255,0.4)', padding: 8, borderRadius: 6, fontFamily: 'monospace', wordBreak: 'break-all'}}>
-                                <strong>Detalhe técnico:</strong> {errorDetails}
+                              <div style={{fontSize: 10, marginTop: 12, fontWeight: 400, opacity: 0.9, color: '#FFFFFF', background: '#450a0a', padding: "12px", borderRadius: 8, fontFamily: 'monospace', wordBreak: 'break-all', border: '1px solid #7f1d1d', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'}}>
+                                <strong style={{display: 'block', marginBottom: 6, color: '#fca5a5', fontSize: 11}}>🛡️ RELATÓRIO TÉCNICO Elior:</strong> 
+                                {errorDetails}
                               </div>
                             )}
                           </div>

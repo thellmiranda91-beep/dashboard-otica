@@ -20,7 +20,7 @@ async function call(endpoint, options = {}) {
     throw { 
       status: res.status, 
       error: `Erro de comunicação com o servidor (${res.status})`, 
-      details: text.substring(0, 200) || 'Resposta vazia'
+      details: text.substring(0, 500) || 'Resposta vazia ou sem JSON'
     };
   }
 
