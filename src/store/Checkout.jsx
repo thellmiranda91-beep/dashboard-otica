@@ -4,8 +4,10 @@ import { Card, Btn, Inp, Stars } from '../components/ui.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { api } from '../config/api.js';
 import { CROSS_ITEMS } from '../config/data.js';
+import { useRef } from 'react';
 
 export function CheckoutPage({ setPage, onComplete }) {
+  const cardBrickRef = useRef(null);
   const { 
     items, total, subtotal, activeBumps, activeCross, shippingCost, 
     toggleCross, cross, crossCatalog, calcShipping, shippingLoading,
@@ -20,7 +22,61 @@ export function CheckoutPage({ setPage, onComplete }) {
     cep:'', street:'', number:'', city:'', state:'', 
     payMethod:'pix' 
   });
+  const [error, setError] = useState(null);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
+
+  // Initialize Mercado Pago
+  useEffect(() => {
+    if (window.MercadoPago && step === 2 && form.payMethod === 'credit_card') {
+      const mpKey = import.meta.env.VITE_MP_PUBLIC_KEY || 'APP_USR-1eb4eec6-b6a9-45bb-8b74-f05c8e035d55';
+      const mp = new window.MercadoPago(mpKey, { locale: 'pt-BR' });
+      const bricksBuilder = mp.bricks();
+
+      const renderCardBrick = async (bricksBuilder) => {
+        const settings = {
+          initialization: { amount: total },
+          callbacks: {
+            onSubmit: async (formData) => {
+              setLoading(true);
+              try {
+                const order = await api.createOrder(orderDataBuilder());
+                const payment = await api.createPayment({
+                  order_id: order.id,
+                  payment_method: 'credit_card',
+                  amount: total,
+                  card_token: formData.token,
+                  installments: formData.installments,
+                  payer: { name: form.name, email: form.email, cpf: form.cpf }
+                });
+                onComplete(order.id, total);
+              } catch (e) {
+                setError(e.error || "Falha no pagamento com cartão.");
+              } finally {
+                setLoading(false);
+              }
+            },
+            onError: (error) => console.error(error),
+          },
+        };
+        cardBrickRef.current = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', settings);
+      };
+      renderCardBrick(bricksBuilder);
+    }
+    return () => {
+      if (cardBrickRef.current) cardBrickRef.current.unmount();
+    };
+  }, [step, form.payMethod]);
+
+  const orderDataBuilder = () => ({
+    customer: { 
+      name: form.name, email: form.email, phone: form.phone, cpf: form.cpf,
+      address: { cep: form.cep, street: form.street, number: form.number, city: form.city, state: form.state } 
+    },
+    items: items.map(i => ({ product_id: i.id, name: i.name, color: i.color, quantity: i.qty, price: i.price, config: i.config })),
+    shipping: { service: selectedShippingOption?.service || 'PAC', price: shippingCost },
+    total: total,
+    method: form.payMethod
+  });
 
   // Responsive Effect
   useEffect(() => {
@@ -103,16 +159,8 @@ export function CheckoutPage({ setPage, onComplete }) {
         onComplete(order.order_id || order.id, finalAmount);
       }
     } catch (e) {
-      console.warn("API Offline ou Erro no Servidor. Ativando Fallback Local...", e);
-      // Persistência local (para modo offline)
-      const existing = JSON.parse(localStorage.getItem('elior_orders') || '[]');
-      const localId = `LOCAL-${Date.now()}`;
-      localStorage.setItem('elior_orders', JSON.stringify([...existing, { ...orderData, id: localId, date: new Date().toISOString() }]));
-      
-      // Simular transição de sucesso
-      setTimeout(() => {
-        onComplete(localId, finalAmount);
-      }, 800);
+      console.error("Erro no Processamento:", e);
+      setError(e.error || e.message || "Ocorreu um erro ao processar seu pagamento. Verifique seus dados e tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -228,8 +276,13 @@ export function CheckoutPage({ setPage, onComplete }) {
                     </div>
                 )}
 
-                {step === 2 && (
+                        {step === 2 && (
                     <div style={{animation:"fadeIn 0.3s"}}>
+                        {error && (
+                          <div style={{background: '#FEE2E2', color: '#B91C1C', padding: 12, borderRadius: 10, marginBottom: 20, fontSize: 13, fontWeight: 600, border: '1px solid #FCA5A5'}}>
+                            ⚠️ {error}
+                          </div>
+                        )}
                         <h3 style={{fontSize:18,fontWeight:800,marginBottom:20}}>Escolha o Pagamento</h3>
                         {[
                             {id:"pix",title:"Pix",desc:"Aprovação imediata + 5% OFF",icon:"🌀",color:C.sg},
@@ -247,10 +300,13 @@ export function CheckoutPage({ setPage, onComplete }) {
                         ))}
 
                         <div style={{marginTop:32,display:"flex",gap:12}}>
-                            {!isMobile && <Btn outline onClick={() => setStep(1)} style={{flex:1}}>Voltar</Btn>}
-                            <Btn primary onClick={handleOrder} disabled={loading} style={{flex: isMobile ? 1 : 2, background:C.sg, padding:"18px",fontSize:16}}>
-                                {loading ? "Processando..." : `FINALIZAR — ${fm(form.payMethod==='pix'?total*0.95:total)}`}
-                            </Btn>
+                        {form.payMethod === 'credit_card' ? (
+                            <div id="cardPaymentBrick_container" style={{marginTop: 20}}></div>
+                        ) : (
+                          <Btn primary onClick={handleOrder} disabled={loading} style={{flex: isMobile ? 1 : 2, background:C.sg, padding:"18px",fontSize:16}}>
+                              {loading ? "Processando..." : `FINALIZAR — ${fm(form.payMethod==='pix'?total*0.95:total)}`}
+                          </Btn>
+                        )}
                         </div>
                     </div>
                 )}
