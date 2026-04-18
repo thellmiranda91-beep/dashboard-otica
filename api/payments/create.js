@@ -129,7 +129,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Erro interno no processamento do pagamento', details: error.message });
   }
 }
-}
 
 async function updateStock(orderId) {
   const { data: items } = await supabase
