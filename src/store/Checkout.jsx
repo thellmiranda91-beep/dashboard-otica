@@ -11,7 +11,7 @@ export function CheckoutPage({ setPage, onComplete }) {
   const { 
     items, total, subtotal, activeBumps, activeCross, shippingCost, 
     toggleCross, cross, crossCatalog, calcShipping, shippingLoading,
-    shipping, selectedShippingOption, setSelectedShippingOption
+    shipping, selectedShippingOption, setSelectedShippingOption, isFreeShipping
   } = useCart();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
