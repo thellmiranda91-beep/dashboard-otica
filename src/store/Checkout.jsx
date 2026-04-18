@@ -8,7 +8,8 @@ import { CROSS_ITEMS } from '../config/data.js';
 export function CheckoutPage({ setPage, onComplete }) {
   const { 
     items, total, subtotal, activeBumps, activeCross, shippingCost, 
-    toggleCross, cross, crossCatalog, calcShipping, shippingLoading 
+    toggleCross, cross, crossCatalog, calcShipping, shippingLoading,
+    shipping, selectedShippingOption, setSelectedShippingOption
   } = useCart();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -76,7 +77,10 @@ export function CheckoutPage({ setPage, onComplete }) {
         ...activeBumps.map(b => ({ name: b.name, price: b.price, type: 'bump' })),
         ...activeCross.map(c => ({ name: c.name, price: c.price, type: 'cross_sell' }))
       ],
-      shipping: { service: 'SEDEX', price: shippingCost },
+      shipping: { 
+        service: selectedShippingOption?.service || 'PAC', 
+        price: shippingCost 
+      },
       total: finalAmount,
       method: form.payMethod
     };
@@ -182,8 +186,35 @@ export function CheckoutPage({ setPage, onComplete }) {
                              <Inp label="Cidade" value={form.city} onChange={e => upd('city',e.target.value)}/>
                         </div>
                         {shippingLoading && <p style={{fontSize:12, color:C.co, fontWeight:700, marginBottom:10}}>🔄 Calculando frete...</p>}
-                        {!shippingLoading && form.cep.replace(/\D/g,'').length === 8 && (
-                          <p style={{fontSize:12, color:C.sg, fontWeight:700, marginBottom:10}}>✅ Frete calculado: {shippingCost === 0 ? 'GRÁTIS' : fm(shippingCost)}</p>
+                        {!shippingLoading && shipping?.options && (
+                          <div style={{marginBottom: 24}}>
+                            <p style={{fontSize:13, fontWeight:700, marginBottom:10, color: C.nv}}>Selecione a forma de entrega:</p>
+                            {shipping.options.map((opt, i) => (
+                              <div 
+                                key={i} 
+                                onClick={() => setSelectedShippingOption(opt)}
+                                style={{
+                                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                  padding: 16, borderRadius: 12, border: `1.5px solid ${selectedShippingOption?.service === opt.service ? C.nv : C.bd}`,
+                                  background: selectedShippingOption?.service === opt.service ? `${C.nv}05` : '#FFF',
+                                  cursor: 'pointer', marginBottom: 10, transition: "all 0.2s"
+                                }}
+                              >
+                                <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+                                  <div style={{width: 18, height: 18, borderRadius: '50%', border: `1.5px solid ${selectedShippingOption?.service === opt.service ? C.nv : C.lt}`, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                    {selectedShippingOption?.service === opt.service && <div style={{width: 10, height: 10, borderRadius: '50%', background: C.nv}} />}
+                                  </div>
+                                  <div>
+                                    <p style={{fontSize: 14, fontWeight: 700, margin: 0, color: C.tx}}>{opt.service}</p>
+                                    <p style={{fontSize: 11, color: C.md, margin: 0}}>{opt.days} dias úteis</p>
+                                  </div>
+                                </div>
+                                <span style={{fontSize: 14, fontWeight: 900, color: (isFreeShipping || opt.price === 0) ? C.sg : C.nv}}>
+                                  {(isFreeShipping || opt.price === 0) ? 'GRÁTIS' : fm(opt.price)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         )}
                         <Inp label="Logradouro" value={form.street} onChange={e => upd('street',e.target.value)}/>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>

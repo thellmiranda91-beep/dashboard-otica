@@ -17,6 +17,7 @@ export default async function handler(req, res) {
 
   try {
     const { type, data, action } = req.body;
+    console.log(`[Webhook MP] Recebido: ${type} - Ação: ${action} - ID: ${data?.id}`);
 
     if (type === 'payment' && data?.id) {
       // Fetch payment details from MP

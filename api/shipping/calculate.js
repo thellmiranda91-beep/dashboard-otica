@@ -58,9 +58,9 @@ export default async function handler(req, res) {
         });
       }
 
-      // Free shipping for orders above R$299
+      // Free shipping for orders with 2 or more products (promo)
       options.forEach(opt => {
-        if (items_count >= 1) { // All orders get free shipping (promo)
+        if (items_count >= 2) { 
           opt.free = true;
           opt.original_price = opt.price;
           opt.price = 0;

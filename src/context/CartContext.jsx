@@ -3,7 +3,7 @@ import { BUMPS, CROSS_ITEMS } from '../config/data.js';
 import { api } from '../config/api.js';
 
 const CartCtx = createContext(null);
-const FREE_SHIPPING_THRESHOLD = 300;
+const FREE_SHIPPING_THRESHOLD = 299;
 
 export function CartProvider({ children, bumpsCatalog = BUMPS, crossCatalog = CROSS_ITEMS }) {
   const [items, setItems] = useState([]);
@@ -11,6 +11,7 @@ export function CartProvider({ children, bumpsCatalog = BUMPS, crossCatalog = CR
   const [cross, setCross] = useState({});
   const [shipping, setShipping] = useState(null);
   const [shippingLoading, setShippingLoading] = useState(false);
+  const [selectedShippingOption, setSelectedShippingOption] = useState(null);
 
   // ... (keeping addItem, removeItem, updateQty, toggleBump, toggleCross, clear, calcShipping as they are)
   const addItem = (product, color, config = {}) => {
@@ -40,9 +41,14 @@ export function CartProvider({ children, bumpsCatalog = BUMPS, crossCatalog = CR
     try {
       const data = await api.calculateShipping(cep, items.length);
       setShipping(data);
+      if (data.options?.length > 0) {
+        setSelectedShippingOption(data.options[0]);
+      }
       return data;
     } catch (e) {
-      setShipping({ success: true, options: [{ service: 'PAC', price: 0, days: 8, free: true }, { service: 'SEDEX', price: 0, days: 3, free: true }] });
+      const fb = { options: [{ service: 'PAC', price: 0, days: 8, free: true }, { service: 'SEDEX', price: 0, days: 3, free: true }] };
+      setShipping(fb);
+      setSelectedShippingOption(fb.options[0]);
     } finally {
       setShippingLoading(false);
     }
@@ -54,7 +60,9 @@ export function CartProvider({ children, bumpsCatalog = BUMPS, crossCatalog = CR
   
   const tempTotalForShipping = subtotal + bumpsTotal + crossTotal;
   const isFreeShipping = tempTotalForShipping >= FREE_SHIPPING_THRESHOLD;
-  const shippingCost = isFreeShipping ? 0 : (shipping?.options?.[0]?.price || 0);
+  
+  const currentShippingPrice = selectedShippingOption?.price || 0;
+  const shippingCost = isFreeShipping ? 0 : currentShippingPrice;
   
   const total = tempTotalForShipping + shippingCost;
   const count = items.reduce((s, i) => s + i.qty, 0);
@@ -68,6 +76,7 @@ export function CartProvider({ children, bumpsCatalog = BUMPS, crossCatalog = CR
       items, addItem, removeItem, updateQty, clear,
       bumps, toggleBump, cross, toggleCross,
       shipping, calcShipping, shippingLoading,
+      selectedShippingOption, setSelectedShippingOption,
       subtotal, bumpsTotal, crossTotal, shippingCost, total, count,
       activeBumps, activeCross,
       remainingForFreeShipping, freeShippingThreshold: FREE_SHIPPING_THRESHOLD, isFreeShipping,
