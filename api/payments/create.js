@@ -50,6 +50,8 @@ export default async function handler(req, res) {
     }
 
     // Call Mercado Pago API
+    console.log(`[MP Debug] Criando pagamento tipo: ${payment_method} para o pedido: ${order_id}`);
+    
     const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
       headers: {
@@ -63,8 +65,9 @@ export default async function handler(req, res) {
     const mpData = await mpResponse.json();
 
     if (!mpResponse.ok) {
+      console.error('[MP Error Details]', JSON.stringify(mpData, null, 2));
       return res.status(400).json({
-        error: 'Payment failed',
+        error: 'Payment failed at gateway',
         details: mpData
       });
     }

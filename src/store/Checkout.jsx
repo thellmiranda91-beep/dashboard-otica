@@ -25,6 +25,10 @@ export function CheckoutPage({ setPage, onComplete }) {
   const [error, setError] = useState(null);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
 
+  const maskCPF = (v) => v.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4').substring(0, 14);
+  const maskCEP = (v) => v.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2').substring(0, 9);
+  const maskPhone = (v) => v.replace(/\D/g, '').replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3').substring(0, 15);
+
   // Initialize Mercado Pago
   useEffect(() => {
     if (window.MercadoPago && step === 2 && form.payMethod === 'credit_card') {
@@ -91,11 +95,23 @@ export function CheckoutPage({ setPage, onComplete }) {
     return () => clearInterval(t);
   }, []);
 
-  // Shipping Calculation Effect
   useEffect(() => {
     const cleanCep = form.cep.replace(/\D/g, '');
     if (cleanCep.length === 8) {
       calcShipping(cleanCep);
+      fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
+        .then(r => r.json())
+        .then(d => {
+          if (!d.erro) {
+            setForm(p => ({ 
+              ...p, 
+              street: d.logradouro || p.street, 
+              city: d.localidade || p.city, 
+              state: d.uf || p.state 
+            }));
+          }
+        })
+        .catch(() => {});
     }
   }, [form.cep]);
 
@@ -106,7 +122,22 @@ export function CheckoutPage({ setPage, onComplete }) {
 
   const handleOrder = async () => {
     if (loading) return;
+    
+    // Validação final de campos
+    const required = ['name', 'cpf', 'email', 'phone', 'cep', 'street', 'number', 'city', 'state'];
+    const missing = required.filter(f => !form[f]);
+    if (missing.length > 0) {
+      setError("Por favor, preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    if (form.cpf.replace(/\D/g,'').length !== 11) {
+      setError("CPF inválido. Digite os 11 números.");
+      return;
+    }
+
     setLoading(true);
+    setError(null);
     
     // Preparar dados do pedido
     const finalAmount = form.payMethod === 'pix' ? total * 0.95 : total;
@@ -218,11 +249,15 @@ export function CheckoutPage({ setPage, onComplete }) {
                         <h3 style={{fontSize:18,fontWeight:800,marginBottom:20}}>Informações de Contato</h3>
                         <Inp label="Nome Completo" value={form.name} onChange={e => upd('name',e.target.value)} placeholder="Como está no cartão"/>
                         <div style={{display:"grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",gap:16}}>
-                            <Inp label="CPF" value={form.cpf} onChange={e => upd('cpf',e.target.value)} placeholder="000.000.000-00"/>
-                            <Inp label="WhatsApp" value={form.phone} onChange={e => upd('phone',e.target.value)} placeholder="(11) 99999-0000"/>
+                            <Inp label="CPF" value={form.cpf} onChange={e => upd('cpf',maskCPF(e.target.value))} placeholder="000.000.000-00"/>
+                            <Inp label="WhatsApp" value={form.phone} onChange={e => upd('phone',maskPhone(e.target.value))} placeholder="(11) 99999-0000"/>
                         </div>
                         <Inp label="E-mail" value={form.email} onChange={e => upd('email',e.target.value)} placeholder="seu@email.com" type="email"/>
-                        <Btn primary full onClick={() => setStep(1)} disabled={!form.name || !form.email} style={{padding:"18px", fontSize: 16}}>CONTINUAR ❯</Btn>
+                        <Btn primary full onClick={() => {
+                          if(!form.name || !form.email || !form.cpf || !form.phone) return setError("Preencha todos os dados de contato.");
+                          setError(null);
+                          setStep(1);
+                        }} style={{padding:"18px", fontSize: 16}}>CONTINUAR ❯</Btn>
                     </div>
                 )}
 
@@ -230,7 +265,7 @@ export function CheckoutPage({ setPage, onComplete }) {
                     <div style={{animation:"fadeIn 0.3s"}}>
                         <h3 style={{fontSize:18,fontWeight:800,marginBottom:20}}>Endereço de Entrega</h3>
                         <div style={{display:"grid",gridTemplateColumns: "1fr 1fr",gap:16}}>
-                            <Inp label="CEP" value={form.cep} onChange={e => upd('cep',e.target.value)} placeholder="00000-000"/>
+                            <Inp label="CEP" value={form.cep} onChange={e => upd('cep',maskCEP(e.target.value))} placeholder="00000-000"/>
                              <Inp label="Cidade" value={form.city} onChange={e => upd('city',e.target.value)}/>
                         </div>
                         {shippingLoading && <p style={{fontSize:12, color:C.co, fontWeight:700, marginBottom:10}}>🔄 Calculando frete...</p>}

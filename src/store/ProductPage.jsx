@@ -349,7 +349,16 @@ export function ProductPage({ product, recommendations, setPage, openProd, lensO
             </ul>
           </div>
 
-          <Btn primary full onClick={() => setWizardMode(true)} style={{ padding: '22px', fontSize: 17, fontWeight: 800, letterSpacing: 0.5 }}>CONFIGURAR LENTES E COMPRAR ❯</Btn>
+          <Btn primary full onClick={() => {
+            if (p.cat === 'sol') {
+              addItem({ ...p, price: totalPrice }, selColor, { usage: 'sol' });
+              setPage('checkout');
+            } else {
+              setWizardMode(true);
+            }
+          }} style={{ padding: '22px', fontSize: 17, fontWeight: 800, letterSpacing: 0.5 }}>
+            {p.cat === 'sol' ? 'ADICIONAR AO CARRINHO ❯' : 'CONFIGURAR LENTES E COMPRAR ❯'}
+          </Btn>
 
           <div style={{ marginTop: 40, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <InfoBox icon="📦" title="FRETE EXPRESSO" desc="Enviamos em 24h úteis para todo Brasil." />
