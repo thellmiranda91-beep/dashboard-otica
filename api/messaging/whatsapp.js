@@ -1,5 +1,5 @@
 // POST /api/messaging/whatsapp
-// Sends WhatsApp messages via Meta Cloud API
+// Sends WhatsApp messages via Z-API
 
 import { supabase, cors, handleOptions } from '../_lib/supabase.js';
 
@@ -16,6 +16,7 @@ export default async function handler(req, res) {
 
     if (!to) return res.status(400).json({ error: 'Número é obrigatório' });
 
+    // Z-API expects 55 + DDD + Number
     const phone = to.replace(/\D/g, '');
 
     // Build message content
@@ -39,52 +40,54 @@ export default async function handler(req, res) {
       });
     }
 
-    // Send via WhatsApp Cloud API
-    const waResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${process.env.WA_PHONE_NUMBER_ID}/messages`,
+    // Send via Z-API
+    const zapiResponse = await fetch(
+      `https://api.z-api.io/instances/${process.env.ZAPI_INSTANCE_ID}/token/${process.env.ZAPI_TOKEN}/send-text`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.WA_TOKEN}`
+          'Client-Token': process.env.ZAPI_CLIENT_TOKEN
         },
         body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: phone,
-          type: 'text',
-          text: { body: content }
+          phone: phone,
+          message: content
         })
       }
     );
 
-    const waData = await waResponse.json();
+    const zapiData = await zapiResponse.json();
 
-    // Log message
-    await supabase.from('message_log').insert({
-      channel: 'whatsapp',
-      recipient: to,
-      content: content,
-      status: waResponse.ok ? 'sent' : 'failed',
-      external_id: waData.messages?.[0]?.id,
-      sent_at: new Date().toISOString(),
-      metadata: { wa_response: waData }
-    });
+    // Log message in Supabase
+    try {
+      await supabase.from('message_log').insert({
+        channel: 'whatsapp',
+        recipient: to,
+        content: content,
+        status: zapiResponse.ok ? 'sent' : 'failed',
+        external_id: zapiData.messageId,
+        sent_at: new Date().toISOString(),
+        metadata: { zapi_response: zapiData }
+      });
+    } catch (dbError) {
+      console.error('Database logging error:', dbError);
+    }
 
-    if (!waResponse.ok) {
+    if (!zapiResponse.ok) {
       return res.status(400).json({
-        error: 'Falha ao enviar WhatsApp',
-        details: waData.error
+        error: 'Falha ao enviar WhatsApp via Z-API',
+        details: zapiData
       });
     }
 
     return res.status(200).json({
       success: true,
-      message_id: waData.messages?.[0]?.id,
+      message_id: zapiData.messageId,
       to: phone
     });
 
   } catch (error) {
     console.error('WhatsApp error:', error);
-    return res.status(500).json({ error: 'Erro interno' });
+    return res.status(500).json({ error: 'Erro interno no servidor' });
   }
 }
