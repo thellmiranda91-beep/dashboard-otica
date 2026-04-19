@@ -29,11 +29,11 @@ export default async function handler(req, res) {
 
       // 1. Create or find customer
       let customerId;
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('customers')
         .select('id')
         .eq('email', customer.email)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         customerId = existing.id;
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
           updated_at: new Date().toISOString()
         }).eq('id', customerId);
       } else {
-        const { data: newCustomer } = await supabase
+        const { data: newCustomer, error: insertError } = await supabase
           .from('customers')
           .insert({
             name: customer.name,
@@ -55,6 +55,10 @@ export default async function handler(req, res) {
           .select('id')
           .single();
         
+        if (insertError) {
+          console.error('[API Orders] Customer insert error:', insertError);
+          throw new Error(`Falha ao criar cliente: ${insertError.message}`);
+        }
         if (!newCustomer) throw new Error("Falha ao criar/encontrar cliente. Verifique se a tabela 'customers' existe.");
         customerId = newCustomer.id;
       }
@@ -110,7 +114,10 @@ export default async function handler(req, res) {
         .select('id, order_number')
         .single();
 
-      if (orderError) return res.status(500).json({ error: "Erro ao registrar pedido (DB_ORDER_FAILED)", details: orderError.message });
+      if (orderError) {
+        console.error('[API Orders] Order insert error:', orderError);
+        return res.status(500).json({ error: "Erro ao registrar pedido (DB_ORDER_FAILED)", details: orderError.message });
+      }
 
       // 6. Create order items
       const orderItems = items.map(i => ({

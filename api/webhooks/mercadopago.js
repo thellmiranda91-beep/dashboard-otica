@@ -82,13 +82,19 @@ function mapMPStatus(mpStatus) {
 
 async function sendOrderConfirmation(orderId, customerId) {
   try {
-    const { data: customer } = await supabase
+    const { data: customer, error: customerError } = await supabase
       .from('customers')
       .select('name, phone, email')
       .eq('id', customerId)
       .single();
 
+    if (customerError) {
+      console.error('[Webhook] Customer fetch error:', customerError);
+      return;
+    }
+
     if (customer?.phone) {
+      console.log(`[Webhook] Enviando WhatsApp para ${customer.phone}`);
       await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/messaging/whatsapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,6 +111,7 @@ async function sendOrderConfirmation(orderId, customerId) {
     }
 
     if (customer?.email) {
+      console.log(`[Webhook] Enviando e-mail para ${customer.email}`);
       await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/messaging/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
